@@ -64,6 +64,37 @@ body {
   align-items: center;
 }
 
+.sync-status {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: #f5f1fb;
+}
+
+.sync-status.sync-success {
+  background: #e6f7ee;
+  color: #256b3b;
+  border-color: #c7ead6;
+}
+
+.sync-status.sync-error {
+  background: #fde6e6;
+  color: #a53535;
+  border-color: #f2c4c4;
+}
+
+.sync-status.sync-pending {
+  background: #fdf3e5;
+  color: #8b5b1a;
+  border-color: #f2d6b5;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;

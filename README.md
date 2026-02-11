@@ -3,7 +3,8 @@ UPTD SMP Negeri 5 Batu Ampar
 
 ## Cara Menjalankan
 - Buka `login.html` di browser.
-- Buat akun sesuai peran (Admin, Guru, Wali Kelas).
+- Login admin/guru/wali menggunakan akun dari data guru.
+- Login siswa menggunakan NISN dengan password `123456`.
 - Data tersimpan di localStorage browser.
 
 ## Alur Peran
@@ -35,6 +36,39 @@ Kehadiran:
 ## Catatan
 - Cetak PDF menggunakan jsPDF + AutoTable CDN.
 - Import Excel menggunakan SheetJS CDN.
+
+## Sinkron Multi-Device (Supabase)
+Agar data terbaca di perangkat lain, gunakan Supabase sebagai penyimpanan pusat.
+
+1. Buat project di Supabase.
+2. Buat tabel `kbm_data` dengan kolom:
+   - `id` (text, primary key)
+   - `data` (jsonb)
+   - `updated_at` (timestamptz, default `now()`)
+
+Contoh SQL:
+```sql
+create table if not exists kbm_data (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+```
+
+Aktifkan policy agar client (anon key) bisa membaca/menulis:
+```sql
+alter table kbm_data enable row level security;
+create policy "public read" on kbm_data for select using (true);
+create policy "public insert" on kbm_data for insert with check (true);
+create policy "public update" on kbm_data for update using (true) with check (true);
+```
+
+3. Isi `supabase-config.js`:
+   - `KBM_SUPABASE_URL`
+   - `KBM_SUPABASE_ANON_KEY`
+   - `KBM_SUPABASE_ROW_ID` (default `default`)
+
+Setelah diisi, data otomatis tersimpan ke Supabase. Perangkat lain cukup membuka ulang halaman agar mengambil data terbaru.
 
 ## Import Cepat (Tanpa Pilih File)
 Gunakan `seed.html` untuk langsung mengisi localStorage dari data siswa yang sudah disiapkan.

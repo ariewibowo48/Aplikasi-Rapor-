@@ -40,6 +40,15 @@
     PAS: 2,
     PAJ: 2
   };
+  var SUPABASE_TABLE = "kbm_data";
+  var supabaseClient = null;
+  var supabaseConfig = null;
+  var supabaseChecked = false;
+  var lastRemoteUpdatedAt = 0;
+  var lastSavedSignature = null;
+  var remoteSaveTimer = null;
+  var remoteSyncPromise = null;
+  var syncCompleted = false;
 
   function uid() {
     return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -48,6 +57,9 @@
   function seedData() {
     return {
       version: 1,
+      meta: {
+        updatedAt: null
+      },
       users: [],
       teachers: [],
       homerooms: [],
@@ -63,6 +75,220 @@
     };
   }
 
+  function touchMeta(data) {
+    if (!data.meta) data.meta = {};
+    data.meta.updatedAt = new Date().toISOString();
+  }
+
+  function getSyncStatusEl() {
+    if (typeof document === "undefined") return null;
+    return document.getElementById("syncStatus");
+  }
+
+  function setSyncStatus(message, variant) {
+    var el = getSyncStatusEl();
+    if (!el) return;
+    if (!message) {
+      el.textContent = "";
+      el.classList.remove("sync-success", "sync-error", "sync-pending");
+      el.style.display = "none";
+      return;
+    }
+    el.textContent = message;
+    el.style.display = "inline-flex";
+    el.classList.remove("sync-success", "sync-error", "sync-pending");
+    if (variant) el.classList.add(variant);
+  }
+
+  function markSyncPending() {
+    setSyncStatus("Sync...", "sync-pending");
+  }
+
+  function getSupabaseConfig() {
+    if (typeof window === "undefined") return null;
+    var url = window.KBM_SUPABASE_URL;
+    var key = window.KBM_SUPABASE_ANON_KEY;
+    if (!url || !key) return null;
+    if (String(url).indexOf("YOUR_PROJECT") !== -1) return null;
+    if (String(key).indexOf("YOUR_ANON_KEY") !== -1) return null;
+    if (!window.supabase || typeof window.supabase.createClient !== "function") return null;
+    return {
+      url: url,
+      key: key,
+      table: window.KBM_SUPABASE_TABLE || SUPABASE_TABLE,
+      rowId: window.KBM_SUPABASE_ROW_ID || "default"
+    };
+  }
+
+  function initSupabase() {
+    if (supabaseChecked) return supabaseClient;
+    supabaseChecked = true;
+    supabaseConfig = getSupabaseConfig();
+    if (!supabaseConfig) {
+      setSyncStatus("");
+      return null;
+    }
+    supabaseClient = window.supabase.createClient(supabaseConfig.url, supabaseConfig.key);
+    return supabaseClient;
+  }
+
+  function getSupabaseConfigCached() {
+    if (!supabaseConfig) supabaseConfig = getSupabaseConfig();
+    return supabaseConfig;
+  }
+
+  function parseUpdatedAt(value) {
+    if (!value) return 0;
+    var ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  function isDataEmpty(data) {
+    if (!data) return true;
+    if ((data.students || []).length) return false;
+    if ((data.teachers || []).length) return false;
+    if ((data.users || []).length) return false;
+    if ((data.homerooms || []).length) return false;
+    if (data.scores && Object.keys(data.scores).length) return false;
+    if (data.attendance && Object.keys(data.attendance).length) return false;
+    return true;
+  }
+
+  function fetchRemoteData() {
+    var client = initSupabase();
+    if (!client) return Promise.resolve(null);
+    var config = getSupabaseConfigCached();
+    if (!config) return Promise.resolve(null);
+    return client
+      .from(config.table)
+      .select("id,data,updated_at")
+      .eq("id", config.rowId)
+      .maybeSingle()
+      .then(function (result) {
+        if (result.error) throw result.error;
+        return result.data || null;
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase fetch error", err);
+        }
+        setSyncStatus("Sync gagal", "sync-error");
+        return null;
+      });
+  }
+
+  function pushRemoteData(data) {
+    var client = initSupabase();
+    if (!client) return Promise.resolve(false);
+    var config = getSupabaseConfigCached();
+    if (!config) return Promise.resolve(false);
+    markSyncPending();
+    var updatedAt = (data.meta && data.meta.updatedAt) || new Date().toISOString();
+    var payload = { id: config.rowId, data: data, updated_at: updatedAt };
+    return client
+      .from(config.table)
+      .upsert(payload, { onConflict: "id" })
+      .select("updated_at")
+      .single()
+      .then(function (result) {
+        if (result.error) throw result.error;
+        var remoteAt = parseUpdatedAt(
+          (result.data && result.data.updated_at) || payload.updated_at
+        );
+        if (remoteAt) lastRemoteUpdatedAt = remoteAt;
+        setSyncStatus("Sync berhasil", "sync-success");
+        return true;
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase sync error", err);
+        }
+        setSyncStatus("Sync gagal", "sync-error");
+        return false;
+      });
+  }
+
+  function scheduleRemoteSave(data) {
+    if (!initSupabase()) return;
+    var signature = JSON.stringify(data);
+    if (signature === lastSavedSignature) return;
+    lastSavedSignature = signature;
+    if (remoteSaveTimer) clearTimeout(remoteSaveTimer);
+    remoteSaveTimer = setTimeout(function () {
+      pushRemoteData(data);
+    }, 400);
+  }
+
+  function initSync() {
+    if (!initSupabase()) return Promise.resolve(false);
+    if (remoteSyncPromise) return remoteSyncPromise;
+    markSyncPending();
+    remoteSyncPromise = fetchRemoteData()
+      .then(function (row) {
+        var local = loadData();
+        var localAt = parseUpdatedAt(local.meta && local.meta.updatedAt);
+
+        if (!row || !row.data) {
+          if (isDataEmpty(local)) {
+            var seeded = applySeedData(local);
+            if (seeded) {
+              saveData(local);
+              return false;
+            }
+          }
+          if (!isDataEmpty(local)) {
+            return pushRemoteData(local).then(function () {
+              return false;
+            });
+          }
+          return false;
+        }
+
+        var remoteData = row.data || seedData();
+        if (!remoteData.meta) remoteData.meta = {};
+        if (!remoteData.meta.updatedAt && row.updated_at) {
+          remoteData.meta.updatedAt = row.updated_at;
+        }
+        ensureIntegrity(remoteData);
+
+        var remoteAt = parseUpdatedAt(row.updated_at || remoteData.meta.updatedAt);
+        if (remoteAt) lastRemoteUpdatedAt = remoteAt;
+
+        if (!localAt || remoteAt > localAt) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData));
+          return true;
+        }
+
+        if (localAt > remoteAt) {
+          return pushRemoteData(local).then(function () {
+            return false;
+          });
+        }
+
+        return false;
+      })
+      .then(function (replaced) {
+        setSyncStatus("Sync berhasil", "sync-success");
+        if (replaced && typeof window !== "undefined") {
+          if (window.KBM_SUPABASE_AUTO_RELOAD !== false) {
+            window.location.reload();
+          }
+        }
+        return replaced;
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase init error", err);
+        }
+        return false;
+      })
+      .finally(function () {
+        syncCompleted = true;
+        remoteSyncPromise = null;
+      });
+    return remoteSyncPromise;
+  }
+
   function loadData() {
     var raw = localStorage.getItem(STORAGE_KEY);
     var data = raw ? JSON.parse(raw) : seedData();
@@ -71,7 +297,9 @@
   }
 
   function saveData(data) {
+    touchMeta(data);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    scheduleRemoteSave(data);
   }
 
   function updateData(mutator) {
@@ -82,6 +310,7 @@
   }
 
   function ensureIntegrity(data) {
+    if (!data.meta) data.meta = { updatedAt: null };
     if (!data.assessments) {
       data.assessments = {
         activeTypes: DEFAULT_ACTIVE_TYPES.slice(),
@@ -373,8 +602,7 @@
     return true;
   }
 
-  function autoSeed() {
-    var data = loadData();
+  function applySeedData(data) {
     var updated = false;
     if (typeof window !== "undefined") {
       if (window.KBM_TEACHERS_SEED) {
@@ -384,6 +612,15 @@
         updated = seedStudents(data, window.KBM_SEED_STUDENTS) || updated;
       }
     }
+    return updated;
+  }
+
+  function autoSeed() {
+    var data = loadData();
+    if (initSupabase() && !syncCompleted && isDataEmpty(data)) {
+      return false;
+    }
+    var updated = applySeedData(data);
     if (updated) saveData(data);
     return updated;
   }
@@ -427,7 +664,14 @@
     seedTeachers: seedTeachers,
     seedStudents: seedStudents,
     autoSeed: autoSeed,
+    initSync: initSync,
     uid: uid,
     getDisplayNis: getDisplayNis
   };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("DOMContentLoaded", function () {
+      initSync();
+    });
+  }
 })();
