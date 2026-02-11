@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Import Cepat - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Import Cepat</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2 class="section-title">Impor Data Siswa ke LocalStorage</h2>
+      <p class="muted">
+        Klik tombol di bawah untuk mengisi data siswa dari file bawaan ke localStorage aplikasi.
+        Gunakan ini satu kali sebelum mulai menggunakan aplikasi.
+      </p>
+      <div class="form-inline">
+        <button class="btn btn-primary" id="seedBtn">Impor Sekarang</button>
+        <button class="btn btn-secondary" id="seedReset">Bersihkan Data Siswa</button>
+      </div>
+      <div class="notice" id="seedStatus" style="margin-top:16px;">Belum ada aksi.</div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="app.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="seed.js"></script>
+</body>
+</html>

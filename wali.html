@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wali Kelas - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Wali Kelas</span>
+        <span class="muted" id="userInfo"></span>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="layout">
+      <aside class="sidebar">
+        <button class="nav-btn active" data-target="section-attendance">Isi Kehadiran</button>
+        <button class="nav-btn" data-target="section-recap">Rekap Nilai</button>
+        <button class="nav-btn" data-target="section-report">Cetak Rapor</button>
+        <button class="nav-btn" data-target="section-performance">Performa Murid</button>
+      </aside>
+
+      <div class="content">
+        <section class="panel" id="section-attendance">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Kehadiran Siswa</h2>
+          <p class="muted">Isi jumlah hadir, sakit, izin, dan alpa.</p>
+        </div>
+        <div class="badge" id="classBadge"></div>
+      </div>
+
+      <div class="table-scroll table-scroll-y">
+        <table class="table" id="attendanceTable">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>NIS</th>
+              <th>NISN</th>
+              <th>Hadir</th>
+              <th>Sakit</th>
+              <th>Izin</th>
+              <th>Alpa</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel section-hidden" id="section-recap">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Rekap Nilai</h2>
+          <p class="muted">Rekap nilai seluruh siswa dalam kelas.</p>
+        </div>
+        <div class="field">
+          <label for="rekapAssessmentSelect">Filter Penilaian</label>
+          <select id="rekapAssessmentSelect"></select>
+        </div>
+      </div>
+
+      <div class="table-scroll table-scroll-y">
+        <table class="table rekap-table" id="rekapTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel section-hidden" id="section-report">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Cetak Rapor</h2>
+          <p class="muted">Pilih jenis penilaian dan siswa untuk mencetak rapor.</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="assessmentSelect">Jenis Penilaian</label>
+          <select id="assessmentSelect"></select>
+        </div>
+        <div class="field">
+          <label for="studentSelect">Pilih Siswa</label>
+          <select id="studentSelect"></select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="input-group">
+            <button class="btn btn-primary" id="printStudent">Cetak Rapor Siswa</button>
+            <button class="btn btn-secondary" id="printClass">Cetak Rapor Kelas</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px; box-shadow:none; border:1px dashed var(--line); background:#fdfbff;">
+        <div class="toolbar">
+          <div>
+            <h3 class="section-title" id="reportTitle">Rapor Siswa</h3>
+            <p class="muted" id="reportSubtitle"></p>
+            <p class="muted" id="reportStudentInfo"></p>
+          </div>
+          <div class="muted" id="reportDate"></div>
+        </div>
+        <div class="table-scroll table-scroll-y">
+          <table class="table" id="reportTable">
+            <thead>
+              <tr>
+                <th>Mata Pelajaran</th>
+                <th>Nilai</th>
+                <th>Tren</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel section-hidden" id="section-performance">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Performa Murid</h2>
+          <p class="muted">3 murid dengan rata-rata nilai tertinggi.</p>
+        </div>
+        <div class="field">
+          <label for="performanceAssessmentSelect">Filter Penilaian</label>
+          <select id="performanceAssessmentSelect"></select>
+        </div>
+      </div>
+
+      <ul class="performance-list" id="performanceList"></ul>
+    </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="wali.js"></script>
+</body>
+</html>

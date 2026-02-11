@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge" id="roleBadge">Admin</span>
+        <span class="muted" id="userInfo"></span>
+        <a class="btn btn-secondary" href="guru-data.html">Data Guru</a>
+        <a class="btn btn-secondary" href="progres.html">Progres</a>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Input Wali Kelas</h2>
+          <p class="muted">Masukkan nama dan NIP wali kelas untuk setiap kelas.</p>
+        </div>
+      </div>
+
+      <form id="waliForm" class="grid-3">
+        <div class="field">
+          <label for="waliName">Nama Wali Kelas</label>
+          <input type="text" id="waliName" required />
+        </div>
+        <div class="field">
+          <label for="waliNip">NIP</label>
+          <input type="text" id="waliNip" required />
+        </div>
+        <div class="field">
+          <label for="waliClass">Kelas</label>
+          <select id="waliClass"></select>
+        </div>
+        <div class="field">
+          <button class="btn btn-primary" type="submit" id="waliSubmit">Tambahkan Wali Kelas</button>
+          <button class="btn btn-secondary" type="button" id="waliCancel" style="display:none;">Batal Edit</button>
+        </div>
+      </form>
+
+      <ul class="list" id="waliList"></ul>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Data Siswa</h2>
+          <p class="muted">Tambah, edit, hapus siswa, atau import dari Excel.</p>
+        </div>
+        <div class="input-group">
+          <input type="file" id="importFile" accept=".xlsx,.xls" />
+          <button class="btn btn-secondary" id="importBtn">Import Excel</button>
+          <button class="btn btn-primary" id="importSeedBtn">Import Data Bawaan</button>
+        </div>
+      </div>
+
+      <form id="studentForm" class="grid-3">
+        <div class="field">
+          <label for="studentName">Nama Siswa</label>
+          <input type="text" id="studentName" required />
+        </div>
+        <div class="field">
+          <label for="studentNis">NIS</label>
+          <input type="text" id="studentNis" />
+        </div>
+        <div class="field">
+          <label for="studentNisn">NISN</label>
+          <input type="text" id="studentNisn" />
+        </div>
+        <div class="field">
+          <label for="studentClass">Kelas</label>
+          <select id="studentClass"></select>
+        </div>
+        <div class="field">
+          <button class="btn btn-primary" type="submit" id="studentSubmit">Tambahkan Siswa</button>
+          <button class="btn btn-secondary" type="button" id="studentCancel" style="display:none;">Batal Edit</button>
+        </div>
+      </form>
+
+      <div class="table-scroll table-scroll-y">
+        <table class="table" id="studentTable">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>NIS</th>
+              <th>NISN</th>
+              <th>Kelas</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="notice notice-warn" style="margin-top:16px;">
+        Format Excel: kolom wajib <strong>Nama</strong>, <strong>NIS</strong> atau <strong>NISN</strong>, <strong>Kelas</strong>. Bisa juga memakai kolom gabungan <strong>NIS/NISN</strong>.
+        Nilai mapel bisa ditambah dengan kolom seperti <strong>Matematika PH 1</strong> atau <strong>IPA PTS</strong>. Kehadiran: <strong>Hadir</strong>, <strong>Sakit</strong>, <strong>Izin</strong>, <strong>Alpa</strong>.
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+  <script src="teacher-data.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

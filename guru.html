@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guru - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Guru</span>
+        <span class="muted" id="userInfo"></span>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Pengaturan Jenis Penilaian & Bobot</h2>
+          <p class="muted">Pilih jenis penilaian yang aktif, lalu atur bobot untuk perhitungan rata-rata.</p>
+        </div>
+      </div>
+      <div id="assessmentControls" class="grid-3"></div>
+      <div class="form-inline" style="margin-top:16px;">
+        <button class="btn btn-primary" id="saveWeightsBtn">Simpan Bobot</button>
+        <span class="muted" id="weightsStatus"></span>
+      </div>
+      <div class="notice" style="margin-top:16px;">
+        PAJ hanya untuk kelas 9. Jika kelas 7/8 dipilih, PAJ otomatis disembunyikan.
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Input Nilai</h2>
+          <p class="muted">Pilih kelas dan mapel, lalu isi nilai sesuai jenis penilaian aktif.</p>
+        </div>
+        <div class="header-meta">
+          <div class="field">
+            <label for="classSelect">Kelas</label>
+            <select id="classSelect"></select>
+          </div>
+          <div class="field">
+            <label for="assessmentFilter">Filter Penilaian</label>
+            <select id="assessmentFilter"></select>
+          </div>
+          <div class="field">
+            <label for="subjectSelect">Mata Pelajaran</label>
+            <select id="subjectSelect"></select>
+          </div>
+        </div>
+      </div>
+      <div class="notice notice-warn" id="subjectNotice" style="display:none; margin-bottom:12px;"></div>
+
+      <div class="table-scroll table-scroll-y">
+        <table class="table" id="scoreTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="form-inline" style="margin-top:16px;">
+        <button class="btn btn-primary" id="submitScoresBtn">Kirim Nilai</button>
+        <button class="btn btn-secondary" id="editScoresBtn">Edit Nilai</button>
+        <span class="muted" id="lockStatus"></span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="app.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="guru.js"></script>
+</body>
+</html>

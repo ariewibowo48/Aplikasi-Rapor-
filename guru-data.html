@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Guru - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Admin</span>
+        <span class="muted" id="userInfo"></span>
+        <a class="btn btn-secondary" href="admin.html">Kembali</a>
+        <a class="btn btn-secondary" href="progres.html">Progres</a>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Data Guru</h2>
+          <p class="muted">Daftar guru beserta mata pelajaran, peran, dan kredensial login.</p>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="table" id="teacherTable">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>NIP</th>
+              <th>Mata Pelajaran</th>
+              <th>Peran</th>
+              <th>Kelas Wali</th>
+              <th>Username</th>
+              <th>Password</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="notice notice-warn" style="margin-top:16px;">
+        Password default berasal dari 6 digit terakhir NIP atau <strong>guru123</strong> jika NIP tidak tersedia.
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="app.js"></script>
+  <script src="teacher-data.js"></script>
+  <script src="guru-data.js"></script>
+</body>
+</html>

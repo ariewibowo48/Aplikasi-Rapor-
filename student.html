@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Informasi Penilaian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Sistem Informasi Penilaian</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Murid</span>
+        <span class="muted" id="studentInfo"></span>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Cetak Rapor Siswa</h2>
+          <p class="muted">Pilih PH yang akan dicetak. File akan terunduh otomatis dan bisa diunduh ulang lewat tombol cetak.</p>
+        </div>
+        <div class="header-meta">
+          <div class="field">
+            <label for="studentAssessmentSelect">Pilih Penilaian</label>
+            <select id="studentAssessmentSelect"></select>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <button class="btn btn-primary" id="studentPrintBtn">Cetak</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice" id="studentNotice"></div>
+
+      <div class="table-scroll table-scroll-y" style="margin-top:16px;">
+        <table class="table" id="studentPreviewTable">
+          <thead>
+            <tr>
+              <th>Mata Pelajaran</th>
+              <th>Nilai</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="student.js"></script>
+</body>
+</html>

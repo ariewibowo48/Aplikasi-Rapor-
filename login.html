@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="card">
+    <section class="hero">
+      <div class="header-line"></div>
+      <h1>Kemajuan Belajar Murid</h1>
+      <p>UPTD SMP Negeri 5 Batu Ampar</p>
+      <p>Silakan login guru/admin/wali atau login siswa menggunakan NISN.</p>
+      <div class="notice" id="loginNotice">Login guru/admin/wali menggunakan akun dari data guru.</div>
+    </section>
+    <section class="form-panel">
+      <div class="tab-row">
+        <button class="tab active" data-tab="staff">Login Guru</button>
+        <button class="tab" data-tab="student">Login Siswa</button>
+      </div>
+
+      <form id="staffLoginForm" class="form active" autocomplete="off">
+        <div class="field">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" required />
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" required />
+        </div>
+        <div class="field">
+          <label for="loginRole">Masuk sebagai</label>
+          <select id="loginRole" required>
+            <option value="admin">Admin</option>
+            <option value="guru">Guru</option>
+            <option value="wali">Wali Kelas</option>
+          </select>
+        </div>
+        <div class="notice hidden" id="loginWaliInfo"></div>
+        <button type="submit" class="btn btn-primary">Login Guru</button>
+        <div class="notice hidden" id="loginError"></div>
+      </form>
+
+      <form id="studentLoginForm" class="form" autocomplete="off">
+        <div class="field">
+          <label for="studentNisn">NISN</label>
+          <input type="text" id="studentNisn" required />
+        </div>
+        <div class="field">
+          <label for="studentPassword">Password</label>
+          <input type="password" id="studentPassword" required />
+        </div>
+        <div class="notice">Password default siswa: 123456</div>
+        <button type="submit" class="btn btn-primary">Login Siswa</button>
+        <div class="notice hidden" id="studentLoginError"></div>
+      </form>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="teacher-data.js"></script>
+  <script src="seed-data.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progres - Kemajuan Belajar Murid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div>
+        <h1 class="brand-title">Kemajuan Belajar Murid</h1>
+        <p class="brand-subtitle">UPTD SMP Negeri 5 Batu Ampar</p>
+      </div>
+      <div class="header-actions">
+        <span class="badge">Admin</span>
+        <span class="muted" id="userInfo"></span>
+        <a class="btn btn-secondary" href="admin.html">Kembali</a>
+        <a class="btn btn-secondary" href="guru-data.html">Data Guru</a>
+        <button class="btn btn-secondary logout-btn" id="logoutBtn">Keluar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Progres Penilaian</h2>
+          <p class="muted">Persentase siswa yang sudah diisi nilainya per mapel.</p>
+        </div>
+        <div class="field">
+          <label for="assessmentSelect">Jenis Penilaian</label>
+          <select id="assessmentSelect"></select>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="table" id="progressTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="toolbar">
+        <div>
+          <h2 class="section-title">Progres Kehadiran</h2>
+          <p class="muted">Persentase siswa yang sudah diisi kehadirannya per kelas.</p>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="table" id="attendanceProgress">
+          <thead>
+            <tr>
+              <th>Kelas</th>
+              <th>Terisi</th>
+              <th>Total Siswa</th>
+              <th>Persentase</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">Kemajuan Belajar Murid • UPTD SMP Negeri 5 Batu Ampar</footer>
+
+  <script src="app.js"></script>
+  <script src="teacher-data.js"></script>
+  <script src="progres.js"></script>
+</body>
+</html>

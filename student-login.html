@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login Murid - Sistem Informasi Penilaian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="card">
+    <section class="hero">
+      <div class="header-line"></div>
+      <h1>Sistem Informasi Penilaian</h1>
+      <p>UPTD SMP Negeri 5 Batu Ampar</p>
+      <p>Masuk menggunakan NISN dan password yang diberikan sekolah.</p>
+      <div class="notice">Password default: 123456</div>
+    </section>
+    <section class="form-panel">
+      <form id="studentLoginForm" class="form active" autocomplete="off">
+        <div class="field">
+          <label for="studentNisn">NISN</label>
+          <input type="text" id="studentNisn" required />
+        </div>
+        <div class="field">
+          <label for="studentPassword">Password</label>
+          <input type="password" id="studentPassword" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Login Murid</button>
+        <div class="notice hidden" id="studentLoginError"></div>
+      </form>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="student-login.js"></script>
+</body>
+</html>
