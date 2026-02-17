@@ -13,7 +13,7 @@
 
   if (window.KBM_TEACHERS_SEED) {
     KBM.updateData(function (data) {
-      KBM.seedTeachers(data, window.KBM_TEACHERS_SEED);
+      return KBM.seedTeachers(data, window.KBM_TEACHERS_SEED);
     });
   }
 

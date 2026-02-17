@@ -39,9 +39,18 @@
 
   fillSelect(classSelect, KBM.CLASSES);
 
-  var hasRestriction = Array.isArray(session.subjects);
+  var data = KBM.loadData();
+  var teacherRecord = (data.teachers || []).find(function (teacher) {
+    return teacher.username === session.username;
+  });
+  var subjectSource =
+    teacherRecord && Array.isArray(teacherRecord.subjects) && teacherRecord.subjects.length
+      ? teacherRecord.subjects
+      : session.subjects;
+
+  var hasRestriction = Array.isArray(subjectSource);
   var allowedSubjects = hasRestriction
-    ? session.subjects.filter(function (subject) {
+    ? subjectSource.filter(function (subject) {
         return Boolean(subject) && KBM.SUBJECTS.indexOf(subject) !== -1;
       })
     : KBM.SUBJECTS.slice();

@@ -62,9 +62,10 @@ window.KBM_TEACHERS_SEED = [
   {
     "name": "Siti Zulaihah, S.Ag",
     "nip": "197312102024212007",
-    "subjectRaw": "PAIBP",
+    "subjectRaw": "PAIBP, Pendidikan Al Qur'an",
     "subjects": [
-      "Pendidikan Agama Islam dan Budi Pekerti"
+      "Pendidikan Agama Islam dan Budi Pekerti",
+      "Pendidikan Al Qur'an"
     ],
     "roles": [
       "guru",

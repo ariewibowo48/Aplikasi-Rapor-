@@ -49,6 +49,7 @@
   var remoteSaveTimer = null;
   var remoteSyncPromise = null;
   var syncCompleted = false;
+  var syncPollTimer = null;
 
   function uid() {
     return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -289,6 +290,19 @@
     return remoteSyncPromise;
   }
 
+  function startSyncPolling() {
+    if (!initSupabase()) return;
+    if (syncPollTimer) return;
+    var interval =
+      typeof window !== "undefined" && typeof window.KBM_SUPABASE_POLL_MS === "number"
+        ? window.KBM_SUPABASE_POLL_MS
+        : 30000;
+    if (interval <= 0) return;
+    syncPollTimer = setInterval(function () {
+      initSync();
+    }, interval);
+  }
+
   function loadData() {
     var raw = localStorage.getItem(STORAGE_KEY);
     var data = raw ? JSON.parse(raw) : seedData();
@@ -304,8 +318,10 @@
 
   function updateData(mutator) {
     var data = loadData();
-    mutator(data);
-    saveData(data);
+    var result = mutator(data);
+    if (result !== false) {
+      saveData(data);
+    }
     return data;
   }
 
@@ -665,6 +681,7 @@
     seedStudents: seedStudents,
     autoSeed: autoSeed,
     initSync: initSync,
+    startSyncPolling: startSyncPolling,
     uid: uid,
     getDisplayNis: getDisplayNis
   };
@@ -672,6 +689,7 @@
   if (typeof window !== "undefined") {
     window.addEventListener("DOMContentLoaded", function () {
       initSync();
+      startSyncPolling();
     });
   }
 })();
