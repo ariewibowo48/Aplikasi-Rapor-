@@ -136,9 +136,10 @@ window.KBM_TEACHERS_SEED = [
   {
     "name": "M. Nor Alfisyahrin F., S.Pd",
     "nip": "199908212025211016",
-    "subjectRaw": "Informatika",
+    "subjectRaw": "Informatika, IPA",
     "subjects": [
-      "Informatika"
+      "Informatika",
+      "IPA"
     ],
     "roles": [
       "guru"
