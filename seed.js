@@ -22,36 +22,36 @@
       return;
     }
 
-    var data = KBM.loadData();
     var added = 0;
     var updated = 0;
 
-    window.KBM_SEED_STUDENTS.forEach(function (student) {
-      if (!student.name || !student.className) return;
+    KBM.updateData(function (data) {
+      window.KBM_SEED_STUDENTS.forEach(function (student) {
+        if (!student.name || !student.className) return;
 
-      var existing = data.students.find(function (item) {
-        return matchStudent(item, student);
-      });
-
-      if (existing) {
-        existing.name = student.name;
-        existing.nis = student.nis || existing.nis;
-        existing.nisn = student.nisn || existing.nisn;
-        existing.className = student.className;
-        updated += 1;
-      } else {
-        data.students.push({
-          id: KBM.uid(),
-          name: student.name,
-          nis: student.nis || "",
-          nisn: student.nisn || "",
-          className: student.className
+        var existing = data.students.find(function (item) {
+          return matchStudent(item, student);
         });
-        added += 1;
-      }
+
+        if (existing) {
+          existing.name = student.name;
+          existing.nis = student.nis || existing.nis;
+          existing.nisn = student.nisn || existing.nisn;
+          existing.className = student.className;
+          updated += 1;
+        } else {
+          data.students.push({
+            id: KBM.uid(),
+            name: student.name,
+            nis: student.nis || "",
+            nisn: student.nisn || "",
+            className: student.className
+          });
+          added += 1;
+        }
+      });
     });
 
-    KBM.saveData(data);
     updateStatus("Impor selesai. Ditambah: " + added + ", diperbarui: " + updated + ".");
   });
 
