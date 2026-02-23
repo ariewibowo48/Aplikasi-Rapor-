@@ -4,3 +4,4 @@ window.KBM_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ
 window.KBM_SUPABASE_TABLE = "kbm_data";
 // Optional: default row id (single-school setup)
 window.KBM_SUPABASE_ROW_ID = "default";
+window.KBM_SUPABASE_MODE = "tables";
