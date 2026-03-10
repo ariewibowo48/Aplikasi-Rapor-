@@ -40,7 +40,19 @@
     PAS: 2,
     PAJ: 2
   };
+  var SUPABASE_PAGE_SIZE = 1000;
   var SUPABASE_TABLE = "kbm_data";
+  var SUPABASE_TABLES = {
+    students: "kbm_students",
+    teachers: "kbm_teachers",
+    homerooms: "kbm_homerooms",
+    users: "kbm_users",
+    assessments: "kbm_assessments",
+    scoreLocks: "kbm_score_locks",
+    scores: "kbm_scores",
+    remedials: "kbm_remedials",
+    attendance: "kbm_attendance"
+  };
   var supabaseClient = null;
   var supabaseConfig = null;
   var supabaseChecked = false;
@@ -50,6 +62,9 @@
   var remoteSyncPromise = null;
   var syncCompleted = false;
   var syncPollTimer = null;
+  var tableFlushTimer = null;
+  var pendingTableUpserts = {};
+  var pendingTableDeletes = {};
 
   function uid() {
     return "id-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -79,6 +94,10 @@
   function touchMeta(data) {
     if (!data.meta) data.meta = {};
     data.meta.updatedAt = new Date().toISOString();
+  }
+
+  function nowIso() {
+    return new Date().toISOString();
   }
 
   function getSyncStatusEl() {
@@ -117,8 +136,20 @@
       url: url,
       key: key,
       table: window.KBM_SUPABASE_TABLE || SUPABASE_TABLE,
-      rowId: window.KBM_SUPABASE_ROW_ID || "default"
+      rowId: window.KBM_SUPABASE_ROW_ID || "default",
+      mode: window.KBM_SUPABASE_MODE || "tables",
+      tables: Object.assign({}, SUPABASE_TABLES, window.KBM_SUPABASE_TABLES || {})
     };
+  }
+
+  function useTableStorage() {
+    var cfg = getSupabaseConfig();
+    return Boolean(cfg && cfg.mode === "tables");
+  }
+
+  function getTablesConfig() {
+    var cfg = getSupabaseConfigCached();
+    return cfg ? cfg.tables || SUPABASE_TABLES : SUPABASE_TABLES;
   }
 
   function initSupabase() {
@@ -144,6 +175,87 @@
     return Number.isFinite(ms) ? ms : 0;
   }
 
+  function scheduleTableFlush() {
+    if (!initSupabase()) return;
+    if (tableFlushTimer) clearTimeout(tableFlushTimer);
+    tableFlushTimer = setTimeout(function () {
+      flushTableUpserts();
+    }, 400);
+  }
+
+  function queueTableUpsert(tableName, row, onConflict, key) {
+    if (!initSupabase()) return;
+    if (!pendingTableUpserts[tableName]) {
+      pendingTableUpserts[tableName] = { onConflict: onConflict || "id", rows: {} };
+    }
+    var entry = pendingTableUpserts[tableName];
+    var rowKey = key || row.id || JSON.stringify(row);
+    entry.rows[rowKey] = row;
+    if (onConflict) entry.onConflict = onConflict;
+    scheduleTableFlush();
+  }
+
+  function queueTableDelete(tableName, ids) {
+    if (!initSupabase()) return;
+    if (!pendingTableDeletes[tableName]) pendingTableDeletes[tableName] = {};
+    ids.forEach(function (id) {
+      pendingTableDeletes[tableName][id] = true;
+    });
+    scheduleTableFlush();
+  }
+
+  function flushTableUpserts() {
+    if (!initSupabase()) return;
+    var tables = Object.keys(pendingTableUpserts);
+    var deleteTables = Object.keys(pendingTableDeletes);
+    if (!tables.length && !deleteTables.length) return;
+    markSyncPending();
+    var client = initSupabase();
+    var tasks = tables.map(function (tableName) {
+      var entry = pendingTableUpserts[tableName];
+      if (!entry) return Promise.resolve(true);
+      var rows = Object.keys(entry.rows).map(function (key) {
+        return entry.rows[key];
+      });
+      delete pendingTableUpserts[tableName];
+      if (!rows.length) return Promise.resolve(true);
+      return client
+        .from(tableName)
+        .upsert(rows, { onConflict: entry.onConflict || "id" })
+        .then(function (result) {
+          if (result.error) throw result.error;
+          return true;
+        });
+    });
+
+    var deleteTasks = deleteTables.map(function (tableName) {
+      var entry = pendingTableDeletes[tableName];
+      if (!entry) return Promise.resolve(true);
+      var ids = Object.keys(entry);
+      delete pendingTableDeletes[tableName];
+      if (!ids.length) return Promise.resolve(true);
+      return client
+        .from(tableName)
+        .delete()
+        .in("id", ids)
+        .then(function (result) {
+          if (result.error) throw result.error;
+          return true;
+        });
+    });
+
+    Promise.all(tasks.concat(deleteTasks))
+      .then(function () {
+        setSyncStatus("Sync berhasil", "sync-success");
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase table sync error", err);
+        }
+        setSyncStatus("Sync gagal", "sync-error");
+      });
+  }
+
   function isDataEmpty(data) {
     if (!data) return true;
     if ((data.students || []).length) return false;
@@ -153,6 +265,35 @@
     if (data.scores && Object.keys(data.scores).length) return false;
     if (data.attendance && Object.keys(data.attendance).length) return false;
     return true;
+  }
+
+  function diffById(prevList, nextList) {
+    var prevMap = {};
+    var nextMap = {};
+    (prevList || []).forEach(function (item) {
+      if (item && item.id) prevMap[item.id] = item;
+    });
+    (nextList || []).forEach(function (item) {
+      if (item && item.id) nextMap[item.id] = item;
+    });
+
+    var added = [];
+    var updated = [];
+    var removed = [];
+
+    Object.keys(nextMap).forEach(function (id) {
+      if (!prevMap[id]) {
+        added.push(nextMap[id]);
+      } else if (JSON.stringify(prevMap[id]) !== JSON.stringify(nextMap[id])) {
+        updated.push(nextMap[id]);
+      }
+    });
+
+    Object.keys(prevMap).forEach(function (id) {
+      if (!nextMap[id]) removed.push(prevMap[id]);
+    });
+
+    return { added: added, updated: updated, removed: removed };
   }
 
   function fetchRemoteData() {
@@ -211,6 +352,10 @@
 
   function scheduleRemoteSave(data) {
     if (!initSupabase()) return;
+    if (useTableStorage()) {
+      scheduleTableFlush();
+      return;
+    }
     var signature = JSON.stringify(data);
     if (signature === lastSavedSignature) return;
     lastSavedSignature = signature;
@@ -220,8 +365,450 @@
     }, 400);
   }
 
+  function fetchTableRows(tableName, selectColumns) {
+    var client = initSupabase();
+    if (!client) return Promise.resolve([]);
+    var pageSize =
+      typeof window !== "undefined" && typeof window.KBM_SUPABASE_PAGE_SIZE === "number"
+        ? window.KBM_SUPABASE_PAGE_SIZE
+        : SUPABASE_PAGE_SIZE;
+    if (!pageSize || pageSize <= 0) pageSize = SUPABASE_PAGE_SIZE;
+
+    var all = [];
+    var start = 0;
+
+    function fetchNext() {
+      var end = start + pageSize - 1;
+      return client
+        .from(tableName)
+        .select(selectColumns || "*")
+        .range(start, end)
+        .then(function (result) {
+          if (result.error) throw result.error;
+          var rows = result.data || [];
+          all = all.concat(rows);
+          if (rows.length === pageSize) {
+            start += pageSize;
+            return fetchNext();
+          }
+          return all;
+        });
+    }
+
+    return fetchNext();
+  }
+
+  function hydrateScores(rows) {
+    var scores = {};
+    (rows || []).forEach(function (row) {
+      if (!row) return;
+      var studentId = row.student_id;
+      if (!studentId) return;
+      if (!scores[studentId]) scores[studentId] = { subjects: {} };
+      if (!scores[studentId].subjects[row.subject]) scores[studentId].subjects[row.subject] = {};
+      if (row.value === null || row.value === undefined) return;
+      scores[studentId].subjects[row.subject][row.type_key] = row.value;
+    });
+    return scores;
+  }
+
+  function hydrateRemedials(rows) {
+    var remedials = {};
+    (rows || []).forEach(function (row) {
+      if (!row) return;
+      var studentId = row.student_id;
+      if (!studentId) return;
+      if (!remedials[studentId]) remedials[studentId] = { subjects: {} };
+      if (!remedials[studentId].subjects[row.subject]) {
+        remedials[studentId].subjects[row.subject] = {};
+      }
+      if (row.value === null || row.value === undefined) return;
+      remedials[studentId].subjects[row.subject][row.type_key] = row.value;
+    });
+    return remedials;
+  }
+
+  function hydrateAttendance(rows) {
+    var attendance = {};
+    (rows || []).forEach(function (row) {
+      if (!row || !row.student_id) return;
+      attendance[row.student_id] = {
+        hadir: row.hadir || 0,
+        sakit: row.sakit || 0,
+        izin: row.izin || 0,
+        alpa: row.alpa || 0
+      };
+    });
+    return attendance;
+  }
+
+  function hydrateScoreLocks(rows) {
+    var locks = {};
+    (rows || []).forEach(function (row) {
+      if (!row) return;
+      var key = row.class_name + "::" + row.subject;
+      locks[key] = Boolean(row.locked);
+    });
+    return locks;
+  }
+
+  function buildDataFromTables(payload, updatedAt) {
+    var data = seedData();
+    data.students = (payload.students || []).map(function (row) {
+      return {
+        id: row.id,
+        name: row.name || "",
+        nis: row.nis || "",
+        nisn: row.nisn || "",
+        className: row.class_name || ""
+      };
+    });
+
+    data.teachers = (payload.teachers || []).map(function (row) {
+      return {
+        id: row.id,
+        name: row.name || "",
+        nip: row.nip || "",
+        subjectRaw: row.subject_raw || "",
+        subjects: Array.isArray(row.subjects) ? row.subjects : [],
+        roles: Array.isArray(row.roles) ? row.roles : [],
+        waliClass: row.wali_class || null,
+        username: row.username || "",
+        password: row.password || ""
+      };
+    });
+
+    data.homerooms = (payload.homerooms || []).map(function (row) {
+      return {
+        id: row.id,
+        name: row.name || "",
+        nip: row.nip || "",
+        className: row.class_name || ""
+      };
+    });
+
+    data.users = (payload.users || []).map(function (row) {
+      return {
+        id: row.id,
+        username: row.username || "",
+        password: row.password || "",
+        role: row.role || ""
+      };
+    });
+
+    var assessmentRow = (payload.assessments || []).find(function (row) {
+      return row && row.id === (getSupabaseConfigCached() || {}).rowId;
+    });
+    if (!assessmentRow && payload.assessments && payload.assessments.length) {
+      assessmentRow = payload.assessments[0];
+    }
+    data.assessments = {
+      activeTypes: Array.isArray(assessmentRow && assessmentRow.active_types)
+        ? assessmentRow.active_types
+        : DEFAULT_ACTIVE_TYPES.slice(),
+      weights:
+        assessmentRow && assessmentRow.weights
+          ? assessmentRow.weights
+          : Object.assign({}, DEFAULT_WEIGHTS)
+    };
+
+    data.scoreLocks = hydrateScoreLocks(payload.scoreLocks || []);
+    data.scores = hydrateScores(payload.scores || []);
+    data.remedials = hydrateRemedials(payload.remedials || []);
+    data.attendance = hydrateAttendance(payload.attendance || []);
+
+    if (updatedAt) {
+      data.meta.updatedAt = new Date(updatedAt).toISOString();
+    }
+
+    ensureIntegrity(data);
+    return data;
+  }
+
+  function collectLatestUpdatedAt(payload) {
+    var latest = 0;
+    Object.keys(payload || {}).forEach(function (key) {
+      (payload[key] || []).forEach(function (row) {
+        if (row && row.updated_at) {
+          var ms = parseUpdatedAt(row.updated_at);
+          if (ms > latest) latest = ms;
+        }
+      });
+    });
+    return latest || null;
+  }
+
+  function pushAllTables(data) {
+    var client = initSupabase();
+    if (!client) return Promise.resolve(false);
+    var tables = getTablesConfig();
+    var tasks = [];
+
+    if (data.students && data.students.length) {
+      tasks.push(
+        client.from(tables.students).upsert(
+          data.students.map(function (student) {
+            return {
+              id: student.id,
+              name: student.name,
+              nis: student.nis,
+              nisn: student.nisn,
+              class_name: student.className,
+              updated_at: nowIso()
+            };
+          }),
+          { onConflict: "id" }
+        )
+      );
+    }
+
+    if (data.teachers && data.teachers.length) {
+      tasks.push(
+        client.from(tables.teachers).upsert(
+          data.teachers.map(function (teacher) {
+            return {
+              id: teacher.id,
+              name: teacher.name,
+              nip: teacher.nip,
+              subject_raw: teacher.subjectRaw || "",
+              subjects: teacher.subjects || [],
+              roles: teacher.roles || [],
+              wali_class: teacher.waliClass || null,
+              username: teacher.username || "",
+              password: teacher.password || "",
+              updated_at: nowIso()
+            };
+          }),
+          { onConflict: "id" }
+        )
+      );
+    }
+
+    if (data.homerooms && data.homerooms.length) {
+      tasks.push(
+        client.from(tables.homerooms).upsert(
+          data.homerooms.map(function (item) {
+            return {
+              id: item.id,
+              name: item.name,
+              nip: item.nip,
+              class_name: item.className,
+              updated_at: nowIso()
+            };
+          }),
+          { onConflict: "id" }
+        )
+      );
+    }
+
+    if (data.users && data.users.length) {
+      tasks.push(
+        client.from(tables.users).upsert(
+          data.users.map(function (item) {
+            return {
+              id: item.id,
+              username: item.username,
+              password: item.password,
+              role: item.role,
+              updated_at: nowIso()
+            };
+          }),
+          { onConflict: "id" }
+        )
+      );
+    }
+
+    tasks.push(
+      client.from(tables.assessments).upsert(
+        {
+          id: (getSupabaseConfigCached() || {}).rowId || "default",
+          active_types: data.assessments.activeTypes || DEFAULT_ACTIVE_TYPES.slice(),
+          weights: data.assessments.weights || Object.assign({}, DEFAULT_WEIGHTS),
+          updated_at: nowIso()
+        },
+        { onConflict: "id" }
+      )
+    );
+
+    var lockRows = Object.keys(data.scoreLocks || {}).map(function (key) {
+      var parts = key.split("::");
+      return {
+        class_name: parts[0],
+        subject: parts[1],
+        locked: Boolean(data.scoreLocks[key]),
+        updated_at: nowIso()
+      };
+    });
+    if (lockRows.length) {
+      tasks.push(
+        client.from(tables.scoreLocks).upsert(lockRows, { onConflict: "class_name,subject" })
+      );
+    }
+
+    var scoreRows = [];
+    Object.keys(data.scores || {}).forEach(function (studentId) {
+      var subjects = data.scores[studentId] && data.scores[studentId].subjects;
+      if (!subjects) return;
+      Object.keys(subjects).forEach(function (subject) {
+        var types = subjects[subject] || {};
+        Object.keys(types).forEach(function (typeKey) {
+          var value = types[typeKey];
+          if (value === null || value === undefined) return;
+          scoreRows.push({
+            student_id: studentId,
+            subject: subject,
+            type_key: typeKey,
+            value: value,
+            updated_at: nowIso()
+          });
+        });
+      });
+    });
+    if (scoreRows.length) {
+      tasks.push(client.from(tables.scores).upsert(scoreRows, { onConflict: "student_id,subject,type_key" }));
+    }
+
+    var remedialRows = [];
+    Object.keys(data.remedials || {}).forEach(function (studentId) {
+      var subjects = data.remedials[studentId] && data.remedials[studentId].subjects;
+      if (!subjects) return;
+      Object.keys(subjects).forEach(function (subject) {
+        var types = subjects[subject] || {};
+        Object.keys(types).forEach(function (typeKey) {
+          var value = types[typeKey];
+          if (value === null || value === undefined) return;
+          remedialRows.push({
+            student_id: studentId,
+            subject: subject,
+            type_key: typeKey,
+            value: value,
+            updated_at: nowIso()
+          });
+        });
+      });
+    });
+    if (remedialRows.length) {
+      tasks.push(
+        client
+          .from(tables.remedials)
+          .upsert(remedialRows, { onConflict: "student_id,subject,type_key" })
+      );
+    }
+
+    var attendanceRows = [];
+    Object.keys(data.attendance || {}).forEach(function (studentId) {
+      var item = data.attendance[studentId];
+      if (!item) return;
+      attendanceRows.push({
+        student_id: studentId,
+        hadir: item.hadir || 0,
+        sakit: item.sakit || 0,
+        izin: item.izin || 0,
+        alpa: item.alpa || 0,
+        updated_at: nowIso()
+      });
+    });
+    if (attendanceRows.length) {
+      tasks.push(client.from(tables.attendance).upsert(attendanceRows, { onConflict: "student_id" }));
+    }
+
+    return Promise.all(tasks)
+      .then(function (results) {
+        results.forEach(function (res) {
+          if (res && res.error) throw res.error;
+        });
+        return true;
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase push all tables error", err);
+        }
+        return false;
+      });
+  }
+
+  function initSyncTables() {
+    if (!initSupabase()) return Promise.resolve(false);
+    if (remoteSyncPromise) return remoteSyncPromise;
+    markSyncPending();
+
+    var tables = getTablesConfig();
+    remoteSyncPromise = Promise.all([
+      fetchTableRows(tables.students),
+      fetchTableRows(tables.teachers),
+      fetchTableRows(tables.homerooms),
+      fetchTableRows(tables.users),
+      fetchTableRows(tables.assessments),
+      fetchTableRows(tables.scoreLocks),
+      fetchTableRows(tables.scores),
+      fetchTableRows(tables.remedials),
+      fetchTableRows(tables.attendance)
+    ])
+      .then(function (results) {
+        var payload = {
+          students: results[0],
+          teachers: results[1],
+          homerooms: results[2],
+          users: results[3],
+          assessments: results[4],
+          scoreLocks: results[5],
+          scores: results[6],
+          remedials: results[7],
+          attendance: results[8]
+        };
+
+        var hasRemote =
+          (payload.students && payload.students.length) ||
+          (payload.teachers && payload.teachers.length) ||
+          (payload.homerooms && payload.homerooms.length) ||
+          (payload.scores && payload.scores.length) ||
+          (payload.attendance && payload.attendance.length);
+
+        if (!hasRemote) {
+          var local = loadData();
+          if (isDataEmpty(local)) {
+            var seeded = applySeedData(local);
+            if (seeded) {
+              saveData(local);
+            }
+          }
+          return pushAllTables(loadData()).then(function () {
+            return false;
+          });
+        }
+
+        var latest = collectLatestUpdatedAt(payload);
+        var data = buildDataFromTables(payload, latest);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return true;
+      })
+      .then(function (replaced) {
+        setSyncStatus("Sync berhasil", "sync-success");
+        if (replaced && typeof window !== "undefined") {
+          if (window.KBM_SUPABASE_AUTO_RELOAD !== false) {
+            window.location.reload();
+          }
+        }
+        return replaced;
+      })
+      .catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("Supabase table init error", err);
+        }
+        setSyncStatus("Sync gagal", "sync-error");
+        return false;
+      })
+      .finally(function () {
+        syncCompleted = true;
+        remoteSyncPromise = null;
+      });
+
+    return remoteSyncPromise;
+  }
+
   function initSync() {
     if (!initSupabase()) return Promise.resolve(false);
+    if (useTableStorage()) return initSyncTables();
     if (remoteSyncPromise) return remoteSyncPromise;
     markSyncPending();
     remoteSyncPromise = fetchRemoteData()
@@ -318,11 +905,174 @@
 
   function updateData(mutator) {
     var data = loadData();
+    var prevSnapshot = null;
+    if (useTableStorage()) {
+      prevSnapshot = {
+        students: JSON.parse(JSON.stringify(data.students || [])),
+        teachers: JSON.parse(JSON.stringify(data.teachers || [])),
+        homerooms: JSON.parse(JSON.stringify(data.homerooms || [])),
+        users: JSON.parse(JSON.stringify(data.users || [])),
+        assessments: JSON.parse(JSON.stringify(data.assessments || {})),
+        scoreLocks: JSON.parse(JSON.stringify(data.scoreLocks || {}))
+      };
+    }
     var result = mutator(data);
     if (result !== false) {
       saveData(data);
+      if (useTableStorage()) {
+        syncCoreTables(prevSnapshot, data);
+      }
     }
     return data;
+  }
+
+  function syncCoreTables(prevSnapshot, data) {
+    if (!prevSnapshot) return;
+    var tables = getTablesConfig();
+    var config = getSupabaseConfigCached() || {};
+
+    var studentDiff = diffById(prevSnapshot.students || [], data.students || []);
+    studentDiff.added.concat(studentDiff.updated).forEach(function (student) {
+      queueTableUpsert(
+        tables.students,
+        {
+          id: student.id,
+          name: student.name || "",
+          nis: student.nis || "",
+          nisn: student.nisn || "",
+          class_name: student.className || "",
+          updated_at: nowIso()
+        },
+        "id"
+      );
+    });
+    if (studentDiff.removed.length) {
+      queueTableDelete(
+        tables.students,
+        studentDiff.removed.map(function (item) {
+          return item.id;
+        })
+      );
+    }
+
+    var teacherDiff = diffById(prevSnapshot.teachers || [], data.teachers || []);
+    teacherDiff.added.concat(teacherDiff.updated).forEach(function (teacher) {
+      queueTableUpsert(
+        tables.teachers,
+        {
+          id: teacher.id,
+          name: teacher.name || "",
+          nip: teacher.nip || "",
+          subject_raw: teacher.subjectRaw || "",
+          subjects: teacher.subjects || [],
+          roles: teacher.roles || [],
+          wali_class: teacher.waliClass || null,
+          username: teacher.username || "",
+          password: teacher.password || "",
+          updated_at: nowIso()
+        },
+        "id"
+      );
+    });
+    if (teacherDiff.removed.length) {
+      queueTableDelete(
+        tables.teachers,
+        teacherDiff.removed.map(function (item) {
+          return item.id;
+        })
+      );
+    }
+
+    var homeroomDiff = diffById(prevSnapshot.homerooms || [], data.homerooms || []);
+    homeroomDiff.added.concat(homeroomDiff.updated).forEach(function (item) {
+      queueTableUpsert(
+        tables.homerooms,
+        {
+          id: item.id,
+          name: item.name || "",
+          nip: item.nip || "",
+          class_name: item.className || "",
+          updated_at: nowIso()
+        },
+        "id"
+      );
+    });
+    if (homeroomDiff.removed.length) {
+      queueTableDelete(
+        tables.homerooms,
+        homeroomDiff.removed.map(function (item) {
+          return item.id;
+        })
+      );
+    }
+
+    var userDiff = diffById(prevSnapshot.users || [], data.users || []);
+    userDiff.added.concat(userDiff.updated).forEach(function (item) {
+      queueTableUpsert(
+        tables.users,
+        {
+          id: item.id,
+          username: item.username || "",
+          password: item.password || "",
+          role: item.role || "",
+          updated_at: nowIso()
+        },
+        "id"
+      );
+    });
+    if (userDiff.removed.length) {
+      queueTableDelete(
+        tables.users,
+        userDiff.removed.map(function (item) {
+          return item.id;
+        })
+      );
+    }
+
+    if (JSON.stringify(prevSnapshot.assessments) !== JSON.stringify(data.assessments)) {
+      queueTableUpsert(
+        tables.assessments,
+        {
+          id: config.rowId || "default",
+          active_types: data.assessments.activeTypes || DEFAULT_ACTIVE_TYPES.slice(),
+          weights: data.assessments.weights || Object.assign({}, DEFAULT_WEIGHTS),
+          updated_at: nowIso()
+        },
+        "id"
+      );
+    }
+
+    var prevLocks = prevSnapshot.scoreLocks || {};
+    var nextLocks = data.scoreLocks || {};
+    if (JSON.stringify(prevLocks) !== JSON.stringify(nextLocks)) {
+      var lockRows = [];
+      Object.keys(nextLocks).forEach(function (key) {
+        var parts = key.split("::");
+        lockRows.push({
+          class_name: parts[0],
+          subject: parts[1],
+          locked: Boolean(nextLocks[key])
+        });
+      });
+      Object.keys(prevLocks).forEach(function (key) {
+        if (nextLocks[key] !== undefined) return;
+        var parts = key.split("::");
+        lockRows.push({
+          class_name: parts[0],
+          subject: parts[1],
+          locked: false
+        });
+      });
+      lockRows.forEach(function (row) {
+        row.updated_at = nowIso();
+        queueTableUpsert(
+          tables.scoreLocks,
+          row,
+          "class_name,subject",
+          row.class_name + "|" + row.subject
+        );
+      });
+    }
   }
 
   function ensureIntegrity(data) {
@@ -470,6 +1220,20 @@
       return;
     }
     data.scores[studentId].subjects[subject][typeKey] = value;
+    if (useTableStorage()) {
+      queueTableUpsert(
+        getTablesConfig().scores,
+        {
+          student_id: studentId,
+          subject: subject,
+          type_key: typeKey,
+          value: value,
+          updated_at: nowIso()
+        },
+        "student_id,subject,type_key",
+        studentId + "|" + subject + "|" + typeKey
+      );
+    }
   }
 
   function getRemedial(data, studentId, subject, typeKey) {
@@ -490,6 +1254,20 @@
       return;
     }
     data.remedials[studentId].subjects[subject][typeKey] = value;
+    if (useTableStorage()) {
+      queueTableUpsert(
+        getTablesConfig().remedials,
+        {
+          student_id: studentId,
+          subject: subject,
+          type_key: typeKey,
+          value: value,
+          updated_at: nowIso()
+        },
+        "student_id,subject,type_key",
+        studentId + "|" + subject + "|" + typeKey
+      );
+    }
   }
 
   function getEffectiveScore(data, studentId, subject, typeKey) {
@@ -521,6 +1299,21 @@
       data.attendance[studentId] = { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
     }
     data.attendance[studentId][field] = value;
+    if (useTableStorage()) {
+      queueTableUpsert(
+        getTablesConfig().attendance,
+        {
+          student_id: studentId,
+          hadir: data.attendance[studentId].hadir || 0,
+          sakit: data.attendance[studentId].sakit || 0,
+          izin: data.attendance[studentId].izin || 0,
+          alpa: data.attendance[studentId].alpa || 0,
+          updated_at: nowIso()
+        },
+        "student_id",
+        studentId
+      );
+    }
   }
 
   function computeTrend(current, previous) {
@@ -635,6 +1428,14 @@
     var data = loadData();
     if (initSupabase() && !syncCompleted && isDataEmpty(data)) {
       return false;
+    }
+    if (useTableStorage()) {
+      var didUpdate = false;
+      updateData(function (draft) {
+        didUpdate = applySeedData(draft);
+        return didUpdate ? undefined : false;
+      });
+      return didUpdate;
     }
     var updated = applySeedData(data);
     if (updated) saveData(data);
