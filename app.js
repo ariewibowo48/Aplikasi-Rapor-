@@ -757,6 +757,9 @@
           attendance: results[8]
         };
 
+        var local = loadData();
+        var localAt = parseUpdatedAt(local.meta && local.meta.updatedAt);
+
         var hasRemote =
           (payload.students && payload.students.length) ||
           (payload.teachers && payload.teachers.length) ||
@@ -765,7 +768,6 @@
           (payload.attendance && payload.attendance.length);
 
         if (!hasRemote) {
-          var local = loadData();
           if (isDataEmpty(local)) {
             var seeded = applySeedData(local);
             if (seeded) {
@@ -778,6 +780,15 @@
         }
 
         var latest = collectLatestUpdatedAt(payload);
+        if (localAt && latest && localAt >= latest) {
+          if (localAt > latest) {
+            return pushAllTables(local).then(function () {
+              return false;
+            });
+          }
+          return false;
+        }
+
         var data = buildDataFromTables(payload, latest);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         return true;
@@ -785,7 +796,7 @@
       .then(function (replaced) {
         setSyncStatus("Sync berhasil", "sync-success");
         if (replaced && typeof window !== "undefined") {
-          if (window.KBM_SUPABASE_AUTO_RELOAD !== false) {
+          if (window.KBM_SUPABASE_AUTO_RELOAD === true) {
             window.location.reload();
           }
         }
@@ -858,7 +869,7 @@
       .then(function (replaced) {
         setSyncStatus("Sync berhasil", "sync-success");
         if (replaced && typeof window !== "undefined") {
-          if (window.KBM_SUPABASE_AUTO_RELOAD !== false) {
+          if (window.KBM_SUPABASE_AUTO_RELOAD === true) {
             window.location.reload();
           }
         }
