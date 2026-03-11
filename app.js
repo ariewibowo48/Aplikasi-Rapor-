@@ -110,6 +110,51 @@
     return document.getElementById("syncStatus");
   }
 
+  function injectStudentSaveButton() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById("studentSaveBtn")) return;
+    var studentForm = document.getElementById("studentForm");
+    var studentTable = document.getElementById("studentTable");
+    if (!studentForm || !studentTable) return;
+
+    var panel = studentForm.closest(".panel");
+    if (!panel) return;
+
+    var container = document.createElement("div");
+    container.className = "form-inline";
+    container.style.marginTop = "16px";
+    container.innerHTML =
+      '<button class="btn btn-primary" id="studentSaveBtn">Simpan Perubahan</button>' +
+      '<span class="muted" id="studentSaveStatus" style="margin-left:12px;"></span>';
+
+    var notice = panel.querySelector(".notice.notice-warn");
+    if (notice && notice.parentNode) {
+      notice.parentNode.insertBefore(container, notice);
+    } else {
+      panel.appendChild(container);
+    }
+
+    var saveBtn = container.querySelector("#studentSaveBtn");
+    var status = container.querySelector("#studentSaveStatus");
+
+    saveBtn.addEventListener("click", function () {
+      status.textContent = "Menyimpan...";
+      var data = loadData();
+      saveData(data);
+      if (typeof initSync === "function") {
+        initSync()
+          .then(function () {
+            status.textContent = "Perubahan tersimpan.";
+          })
+          .catch(function () {
+            status.textContent = "Gagal menyimpan.";
+          });
+      } else {
+        status.textContent = "Perubahan tersimpan.";
+      }
+    });
+  }
+
   function setSyncStatus(message, variant) {
     var el = getSyncStatusEl();
     if (!el) return;
@@ -1507,6 +1552,7 @@
     window.addEventListener("DOMContentLoaded", function () {
       initSync();
       startSyncPolling();
+      injectStudentSaveButton();
     });
   }
 })();
