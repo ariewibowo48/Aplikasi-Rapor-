@@ -1,6 +1,11 @@
 (function () {
   "use strict";
 
+  if (typeof window !== "undefined") {
+    // Hindari reload otomatis agar tidak terjebak loop.
+    window.KBM_SUPABASE_AUTO_RELOAD = false;
+  }
+
   var STORAGE_KEY = "kbm_data_v1";
   var SESSION_KEY = "kbm_session_v1";
 
